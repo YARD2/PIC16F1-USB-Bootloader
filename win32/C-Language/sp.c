@@ -6,9 +6,11 @@ HANDLE sp_open(LPSTR ComPort, DWORD BitRate, DWORD ReadTimeOut)
 	HANDLE hComm;
 	DCB dcb = {0};
 	COMMTIMEOUTS CommTmOut = {0};
-	
+	char ComPortopen[12] = "\\\\.\\"; //needed for COMport > 9, works also for 1-9
+	strcat( ComPortopen, ComPort );	
+
 	// Get a handle to the port.
-	hComm = CreateFile(ComPort,  
+	hComm = CreateFile(ComPortopen,  
 		GENERIC_READ | GENERIC_WRITE, 
 		0, 
 		NULL, 

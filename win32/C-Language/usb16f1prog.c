@@ -57,6 +57,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "sp.h"
+#include <getopt.h>
 
 
 //#define TEST 1
@@ -75,14 +76,13 @@
 #define BCMD_ERASE  0x45
 #define BCMD_RESET  0x52
 
+#define USEProgressBar  //instead of Print Address
 
-#define MAXPROG	8192*2
-
-
-unsigned char progmem[MAXPROG];
+unsigned char progmem[8192*2];
 
 static int check;
 static int fail;
+static int MAXPROG = 8192*2;
 
 /*****************************************************************************************/
 static unsigned hexdigit(FILE *fp)
@@ -141,36 +141,50 @@ int loadhex(FILE *fp)
 	int type;
 	int linelen;
 	int i;
+	
    unsigned char b;
+   unsigned char s;
 	
    fail = 0;
 
 	memset(progmem,0xff,MAXPROG);
 	
     type = 0;
-    while ( type != 1 ) {
-		if ( getc(fp) != ':' ) return HE_CEX;		/* expected ':' */
+    while ( type != 1 ) {				//01 = End of File
+		s = getc(fp); 					//read 1st char in line
+		
+		if ( s == 0x10 ) continue;		/* end of line protection */
+		if ( s == 0x13 ) continue;		/* end of line protection */
+		if ( s ==  ';' ) return 0;		/* Mark ; as and of file if available for other procedure needed*/
+		if ( s !=  ':' ) return HE_CEX;	/* expected ':' */
 		check = 0;
 		linelen = HEXBYTE();
 		address = HEXWORD();
 		type	= HEXBYTE();
 		
 		if (type==0) { //Data 
-			if (adrhi==0) { //progmem
+			if (adrhi==0) 
+			{ //progmem
 				for ( i=0; i<linelen; i++) {
 					b=HEXBYTE();
 					if (address<MAXPROG) progmem[address++]=b;
 				}
+			}
+			else {
+				for ( i=0; i<linelen; i++) {
+					b=HEXBYTE(); //read the line
+				}
+				adrhi = 0; // reset adrhi
 			}
 		}
 		
 		else if (type==4) { //Addr
 			adrhi = HEXWORD();
 		}
-		HEXBYTE();			/* get checksum */
+		HEXBYTE();					/* get checksum */
 		(void) getc(fp);			/* discard end-of-line */
 		if ( check&0xFF )
-			return HE_CHK; 		/* checksum error */
+			return HE_CHK; 			/* checksum error */
 		
 	}
 	
@@ -276,6 +290,24 @@ int device_write(HANDLE hComPort, unsigned char * Row) {
 	return Back;	
 }
 
+
+int device_version(HANDLE hComPort) {
+	unsigned char Buff[2];
+	unsigned char Status;
+	int ret;
+	
+	Buff[0] = 'V';
+	Buff[1] = 'B';
+
+	ret=sp_write(hComPort,Buff,sizeof(Buff));
+	
+	if (ret==sizeof(Buff)) { //64
+		ret=sp_read(hComPort,&Status,1);
+		return Status;
+			
+	}else return 5;
+}
+
 int device_reset(HANDLE hComPort) {
 	unsigned char Cmd;
 	int Back=1; //Error
@@ -295,17 +327,36 @@ int device_reset(HANDLE hComPort) {
 unsigned char ProgLine[64+3];
 
 void PrepareProgressLine(void) {
+#ifdef USEProgressBar
 	ProgLine[0]='[';
 	memset(ProgLine+1,'B',4);
 	memset(ProgLine+1+4,'-',64-4);
 	ProgLine[65]=']';
 	ProgLine[66]=0;
-
+#endif
 }
+
 void ShowProgressLine(int Addr,char Action) {
+#ifdef USEProgressBar
 	int Pos=Addr/(32*4);
 	ProgLine[Pos+1]=Action;
 	printf("\r  %s",ProgLine);
+#else
+	if (Action == 'E') printf("%d -> ERASE .. ",Addr);
+	if (Action == 'W') printf(" -> WRITE -> Done\n");
+	if (Action == 'N') printf("%d -> ERASE only \n",Addr);
+#endif
+}
+
+void PrintUsage(void)
+{
+   	printf ("\nUsage:\n");
+   	printf (".exe -c [comport] -r -[mhe] -f [file.hex]\n");
+  	printf ("  -c COMport  .. bootloader serial port\n");
+   	printf ("  -r          .. only Reset Device\n");
+  	printf ("  -[mhe]      .. Max Memory usage (only one option) (a=8192 default / h=8064 / e=7936)\n");
+  	printf ("  -f file.hex .. program to write and reset\n");
+	printf ("\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -316,19 +367,103 @@ int main(int argc, char *argv[]) {
 	int endaddr=0;
 	int i;
 	HANDLE ComPort;
-	
-	if (argc > 2) {
-		printf ("usb16f1prog:\n");
+	int DEVreset = 0;
+	int DEVversion = 0;
+	int opt;
+	char *COMPortID = NULL;
+	char *HEXfile = NULL;
 
-                printf ("  Loading hex file ...\n");
-		fp=fopen(argv[2],"r");
+	printf ("CDC Bootloader Flash utility v1.0:\n");
+	printf ("Option selected:\n");
+	while ((opt = getopt(argc, argv, "c:vrahef:")) != -1)
+	{
+		switch (opt)
+		{
+		case 'c':
+			COMPortID = optarg;
+			printf("  -c %s\n",COMPortID);
+			break;
+		case 'f':
+			HEXfile = optarg;
+			printf("  -f %s\n",HEXfile);
+			break;
+		case 'r':
+			printf("\nDevice reset only\n");
+			DEVreset = 1;
+			break;
+		case 'v':
+			printf("\nGet Bootloader version only\n");
+			DEVversion = 1;
+			break;
+		case 'a'	:
+			printf("  -a Memory max usage 8192 (1FFF)\n");
+			MAXPROG	= 8192*2; //for all Flashrange
+			break;
+		case 'h'	:
+			printf("  -h Memory max usage 8064 (1F80)\n");
+			MAXPROG	= 8064*2; //without High Endurance Flash
+			break;
+		case 'e'	:
+			printf("  -e Memory max usage 7936 (1F00)\n");
+			MAXPROG	= 7936*2; //without High Endurance Flash - 128Bytes normal flash --> 256Bytes EEPROM Emulation
+			break;
+		default:
+			PrintUsage();
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (COMPortID == NULL){
+		printf("ERROR: No COMport specified");
+		PrintUsage();
+		exit(EXIT_FAILURE);
+	}
+
+	if ( ( (DEVreset == 0) & (DEVversion == 0)) && (HEXfile == NULL)){
+		printf("ERROR: No HEXfile specified");
+		PrintUsage();
+		exit(EXIT_FAILURE);
+	}
+	
+	if((DEVreset == 1) || (DEVversion == 1))
+	{
+		ComPort = sp_open(COMPortID, 9600, 1000);
+		if (ComPort==INVALID_HANDLE_VALUE) {
+		    printf("\nError - unable to open '%s' serial port\n",COMPortID);
+			exit(EXIT_FAILURE);
+		}
+		else {
+			int ret=0;
+			if (DEVreset == 1)
+			{
+				ret = device_reset(ComPort);
+			}
+
+			if (DEVversion == 1)
+			{
+				ret = device_version(ComPort);	
+				printf("\n  Bootloader Version: 0x%02X\n",ret);
+				ret = 0;
+			}
+			
+			sp_close(ComPort);
+			if (!ret) {
+				printf("\nDONE");				
+				}
+			return 0;
+			}
+	}
+	
+
+        printf ("  Loading hex file ...\n");
+		fp=fopen(HEXfile,"r");
 		if (fp!=NULL) {
 			ret=loadhex(fp);
 			fclose(fp);
 		}	
 	
 		if (ret!=0) {
-                	printf("\nError - unable to read '%s' file\n",argv[2]);
+                	printf("\nError - unable to read '%s' file. Error %d\n",HEXfile,ret);
 
 		} else	{ //Analize progmem
 			for (i=0;i<MAXPROG;i+=64) {
@@ -354,10 +489,10 @@ int main(int argc, char *argv[]) {
 				}
 	*/
 				
-				ComPort = sp_open(argv[1], 9600, 1000);
+				ComPort = sp_open(COMPortID, 9600, 1000);
 				if (ComPort==INVALID_HANDLE_VALUE) {
 
-				   printf("\nError - unable to open '%s' serial port\n",argv[1]);
+				   printf("\nError - unable to open '%s' serial port\n",COMPortID);
 				}else {
 					int ret=0;
 
@@ -381,8 +516,8 @@ int main(int argc, char *argv[]) {
 				}
 				if (!ret) {
 					for (i=endaddr+64;i<MAXPROG;i+=64) {
-						ShowProgressLine(i/2,'E');
-						ret=device_set_params(ComPort, i/2, 0); //just errase
+						ShowProgressLine(i/2,'N');
+						ret=device_set_params(ComPort, i/2, 0); //just erase the rest of the flash
 						//printf("device_set_params(%04X):%d\n",i/2,ret);
 						if (ret) break;
 					}
@@ -394,9 +529,10 @@ int main(int argc, char *argv[]) {
 				sp_close(ComPort);
 
 				if (!ret) {
-					printf("\n\nDone.\n");
+					printf("\nFlash complete.\n");
 				} else {
 					printf("\n\nError on address: 0x%04x.\n",i/2);
+					printf("Try Flash Firmware again\n");
 				}
 
 				
@@ -404,14 +540,8 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
-		
-	} else {	 //argc >2
-        	printf ("\nUsage:\n");
-        	printf ("   usb16f1prog com1 file.hex\n");
-               	printf ("     com1     .. bootloader serial port\n");
-               	printf ("     file.hex .. program to write\n");
-		printf ("\n");
-	}
+
+	
 	return 0;
 }
 
