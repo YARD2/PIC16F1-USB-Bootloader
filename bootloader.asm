@@ -107,10 +107,10 @@ SERIAL_NUMBER_DIGIT_CNT	equ	4
 
 ; I plan to apply for an Openmoko Product ID: the current product ID is temporary.
 ; If your organization has its own vendor ID/product ID, substitute it here.
-; Thanks to https://pid.codes to assign a PID
+; Thanks to https://pid.codes, PID code requested 
 
-USB_VENDOR_ID		equ	0x1209
-USB_PRODUCT_ID		equ	0x200A
+USB_VENDOR_ID		equ	0x1D50
+USB_PRODUCT_ID		equ	0xEEEE
 
 DEVICE_DESC_LEN		equ	18	; device descriptor length
 CONFIG_DESC_TOTAL_LEN	equ	67	; total length of configuration descriptor and sub-descriptors
