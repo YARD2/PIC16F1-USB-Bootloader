@@ -97,6 +97,10 @@ The application entry point is address `0x200`. On interrupt, the bootloader jum
 
 The power configuration is hard coded to 100mA:
 
+Hint XC8 Compiler:
+Select: "Format HEX File for Download" in XC8 -> Linker -> Runtime option
+This generate a HEX file which meet the 32Word requirement
+
 Other sample Flash tools are within the win32 folder:
 - C 
 - Delphi
