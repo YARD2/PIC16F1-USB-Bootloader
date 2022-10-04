@@ -61,6 +61,9 @@ Once an in-system programmer has been used to program the bootloader onto a micr
   MPLABx don't support MPASM any more. You can download MPLAB8 from Microchip Archive page
   [Microchip Archive]https://www.microchip.com/en-us/tools-resources/archives/mplab-ecosystem
 - A Makefile is provided for developing application code using the SDCC open-source C compiler.
+- Thanks to https://pid.codes to assign a PID
+	VENDOR_ID	0x1209
+	PRODUCT_ID	0x200A
 
 ## Limitations
 
