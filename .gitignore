@@ -3,3 +3,6 @@
 *.cod
 MPLABXLog.*
 *.o
+*.dcu
+*.~dfm
+*.~pas

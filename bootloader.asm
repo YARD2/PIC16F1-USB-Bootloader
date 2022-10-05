@@ -248,11 +248,15 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 
 ; Not entering application code: initialize the USB interface and wait for commands.
 ; Defined a specific memory address to jump from the User application directly to Bootloader for interaction free update
-; User Application have to drop the USB firstly, wait, and goto 0x001C
+; User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C
 ; Could be 0x0016 if you disbale all options 0x001C is safe for all options 
 ;XC8 2.x example:
 ;-------------------------------------------
-;UCONbits.USBEN = 0; // detach from USB BUS
+;T1CON  = 0;
+;T1GCON = 0;
+;INTCONbits.PEIE = 0;
+;INTCONbits.GIE  = 0;
+;UCONbits.USBEN  = 0; // detach from USB BUS
 ;for(k=0;k<125;k++) __delay_ms(10); //optional but recommended to wait ~ 1 second
 ; #asm
 ;    movlp 0x00

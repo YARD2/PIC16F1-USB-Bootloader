@@ -46,16 +46,20 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 - Bootlaoder LED blinking support on PIN RC3
 - Drop USB and wait before reset (is a bit more secure)
 - The bootloader does support hot-plugging
-      To reprogram the firmware on a self-powered device, the
-	  User Application have to drop the USB firstly, wait, and goto 0x001C
-	  XC8 2.x example:
-
-	  UCONbits.USBEN = 0; // detach from USB BUS
-      for(k=0;k<125;k++) __delay_ms(10); //recommended (!) to wait min. 1 second 
-      #asm
-       movlp 0x00
-       goto 0x001C
-      #endasm
+    To reprogram the firmware on a self-powered device, the
+    User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C
+    XC8 2.x example:
+      
+	T1CON  = 0;
+	T1GCON = 0;
+	INTCONbits.PEIE = 0;
+	INTCONbits.GIE  = 0;
+	UCONbits.USBEN  = 0; // detach from USB BUS
+	for(k=0;k<125;k++) __delay_ms(10); //recommended (!) to wait min. 1 second 
+	#asm
+	  movlp 0x00
+	  goto 0x001C
+	#endasm
 
 - Support for MPLAB (8.92) using MPSAM 
   MPLABx don't support MPASM any more. You can download MPLAB8 from Microchip Archive page
