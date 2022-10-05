@@ -157,6 +157,7 @@ begin
   j := j + 2;
  until j >= 63;
  chksum := 256 - (chksum mod 256);
+ if chksum = 256 then chksum := 0;
  Result := chksum;
 {$R+};
 end;

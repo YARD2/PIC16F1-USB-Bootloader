@@ -156,8 +156,7 @@ object Form1: TForm1
       'COM6'
       'COM7'
       'COM8'
-      'COM9'
-      '')
+      'COM9')
   end
   object OpenDialog1: TOpenDialog
     Left = 280
