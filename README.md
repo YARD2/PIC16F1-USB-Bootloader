@@ -49,7 +49,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
     To reprogram the firmware on a self-powered device, the
     User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C
     XC8 2.x example:
-      
+```      
 	T1CON  = 0;
 	T1GCON = 0;
 	INTCONbits.PEIE = 0;
@@ -60,6 +60,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 	  movlp 0x00
 	  goto 0x001C
 	#endasm
+```
 
 - Support for MPLAB (8.92) using MPSAM 
   MPLABx don't support MPASM any more. You can download MPLAB8 from Microchip Archive page
@@ -83,7 +84,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 ## Prebuilt HEX file
 
 If you don't want to assemble the bootloader yourself (and you really should, since it's easy and it doesn't require gigabytes of Microchip software to build), 
-[here is a prebuilt HEX file.](bootloader.hex) **Note:** No serial numer used
+[here is a prebuilt HEX file.](bootloader.hex) **Note:** No serial numer used, RA3=Bootloader, RC3=LED
 
 ## Developing application code
 

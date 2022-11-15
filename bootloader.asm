@@ -54,8 +54,11 @@
 LOGGING_ENABLED		equ	0
 ; Overdrive data in descriptor by app
 ENABLE_POWER_CONFIG	equ	0
-; Bootloader switch definition RA3
+
+; Bootloader switch definition for RA3 Internal Pullup used
 USE_RA3_SWITCH		equ 1
+; Bootloader switch definition RC0 (external pull-up need for this pin)
+USE_RC0_SWITCH		equ 0
 ; Bootloader switch definition RC3 (external pull-up need for this pin)
 USE_RC3_SWITCH		equ 0
 ;Check if User App is present. Not needed since normally this happen normally only after bootloader flash (9Bytes needed)
@@ -180,7 +183,7 @@ DEVICE_CONFIGURED	equ	2	; the device is configured
 ;;; Vectors
 	org	0x0000
 RESET_VECT
-; Enable weak pull-ups
+; Enable weak pull-ups fpr RA3 MCLR
 #IF USE_RA3_SWITCH
 	banksel	OPTION_REG
 	bcf	OPTION_REG,NOT_WPUEN
@@ -217,10 +220,17 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 
 ; We have a valid application? Check if the entry pin is grounded
 
-#IF USE_RC3_SWITCH
-	banksel	ANSELC				;disable analog function on pin
-	bcf		ANSELC,ANSC3
+	banksel	ANSELC	  ;disable analog function on pin
+	clrf    ANSELC    ;clear ANSEL reg, all digital I/O
+;	bcf     ADCON0,ADON
 
+#IF USE_RC0_SWITCH
+	banksel	PORTC
+	btfss	PORTC,RC0
+	goto	_bootloader_main	; enter bootloader mode if input is low
+#ENDIF
+
+#IF USE_RC3_SWITCH
 	banksel	PORTC
 	btfss	PORTC,RC3
 	goto	_bootloader_main	; enter bootloader mode if input is low
@@ -236,10 +246,9 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 	bsf	OPTION_REG,NOT_WPUEN	; but first, disable weak pullups
 #ENDIF
 
-#IF USE_RC3_SWITCH
-	banksel	ANSELC				;enable analog function on pin
-	bsf		ANSELC,ANSC3
-#ENDIF
+
+	banksel	ANSELC			;enable analog function on RC
+	clrf    ANSELC  		;clear ANSEL reg, all digital I/O
 
 ;Start User Application
 	movlp	high APP_ENTRY_POINT	; attempt to appease certain user apps
