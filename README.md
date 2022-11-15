@@ -47,7 +47,8 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 - Drop USB and wait before reset (is a bit more secure)
 - The bootloader does support hot-plugging
     To reprogram the firmware on a self-powered device, the
-    User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C
+    User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C.
+	
     XC8 2.x example:
 ```      
 	T1CON  = 0;
