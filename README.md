@@ -35,7 +35,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 - The bootloader can be used with a bus-powered or self-powered device. An application can specify whether the hardware is bus-powered or self-powered, and its maximum current draw.
 - When power is applied or the device is reset, the chip enters bootloader mode if: 
   a) it does not detect application code, or (Option)
-  b) if pin RA3 (or an other PIN selectabe in asm) is held low. 
+  b) if pin RA3 (or an other PIN selectable in asm) is held low. 
   In bootloader mode, the device attaches to the USB bus, enumerates, and waits in an idle loop for commands.
 - Bootloader code and application code are mutually exclusive. The application does not run in bootloader mode, and the device does not attach to the USB bus when running application code. (unless done so by the application firmware)
 - Application code is free to use interrupts; the hardware interrupt vector is in bootloader code space, but all interrupts are forwarded to the application when not in bootloader mode.
