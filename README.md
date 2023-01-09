@@ -36,6 +36,8 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 - When power is applied or the device is reset, the chip enters bootloader mode if: 
   a) it does not detect application code, or (Option)
   b) if pin RA3 (or an other PIN selectable in asm) is held low. 
+  c) if pin RA5 (can use of internal Pullup for detection) is held low. 
+     Note: If internal Pullup is used, the option for application dectection can not be used. needs to much space.
   In bootloader mode, the device attaches to the USB bus, enumerates, and waits in an idle loop for commands.
 - Bootloader code and application code are mutually exclusive. The application does not run in bootloader mode, and the device does not attach to the USB bus when running application code. (unless done so by the application firmware)
 - Application code is free to use interrupts; the hardware interrupt vector is in bootloader code space, but all interrupts are forwarded to the application when not in bootloader mode.
@@ -43,8 +45,10 @@ Once an in-system programmer has been used to program the bootloader onto a micr
   or win32 samples application in C and Delphi
 - Multiple bootloaded PICs can be attached to the USB bus, as long as each one is programmed with a different serial number. The serial number can be specified when assembling the bootloader.
 - Bootloader Version support
+- LVP programming can be selected
 - Bootlaoder LED blinking support on PIN RC3
 - Drop USB and wait before reset (is a bit more secure)
+- Analoge Mode for PIN Cx is disabled, Must be enabled in your app if you need it. (For Switches and LED support)
 - The bootloader does support hot-plugging
     To reprogram the firmware on a self-powered device, the
     User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C.

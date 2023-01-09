@@ -57,12 +57,17 @@ ENABLE_POWER_CONFIG	equ	0
 
 ; Bootloader switch definition for RA3 Internal Pullup used
 USE_RA3_SWITCH		equ 1
+; Bootloader switch definition for RA5 Internal Pullup used
+USE_RA5_SWITCH		equ 0
 ; Bootloader switch definition RC0 (external pull-up need for this pin)
 USE_RC0_SWITCH		equ 0
 ; Bootloader switch definition RC3 (external pull-up need for this pin)
 USE_RC3_SWITCH		equ 0
 ;Check if User App is present. Not needed since normally this happen normally only after bootloader flash (9Bytes needed)
 USE_CHECK_APP		equ 0
+
+;USE LVP Programming
+USE_LVP				equ 0
 
 ;Do not use Serial Number at all, not needed normally 
 HIDE_SERIEL_NUMBER	equ 1
@@ -97,9 +102,14 @@ WRT_CONFIG		equ	_WRT_HALF
 WRT_CONFIG		equ	_WRT_BOOT
 #endif
 
-	__config _CONFIG1, _FOSC_INTOSC & _WDTE_SWDTEN & _PWRTE_ON & _MCLRE_OFF & _CP_OFF & _BOREN_ON & _IESO_OFF & _FCMEN_OFF
-	__config _CONFIG2, WRT_CONFIG & _CPUDIV_NOCLKDIV & _USBLSCLK_48MHz & _PLLMULT_3x & _PLLEN_ENABLED & _STVREN_ON & _BORV_LO & _LVP_OFF
+#if USE_LVP
+LVP_MODE		equ _LVP_ON
+#else
+LVP_MODE		equ _LVP_OFF
+#endif
 
+	__config _CONFIG1, _FOSC_INTOSC & _WDTE_SWDTEN & _PWRTE_ON & _MCLRE_OFF & _CP_OFF & _BOREN_ON & _IESO_OFF & _FCMEN_OFF
+	__config _CONFIG2, WRT_CONFIG & _CPUDIV_NOCLKDIV & _USBLSCLK_48MHz & _PLLMULT_3x & _PLLEN_ENABLED & _STVREN_ON & _BORV_LO & LVP_MODE
 
 
 ;;; Constants and varaiable addresses
@@ -183,12 +193,6 @@ DEVICE_CONFIGURED	equ	2	; the device is configured
 ;;; Vectors
 	org	0x0000
 RESET_VECT
-; Enable weak pull-ups fpr RA3 MCLR
-#IF USE_RA3_SWITCH
-	banksel	OPTION_REG
-	bcf	OPTION_REG,NOT_WPUEN
-#ENDIF
-
 	banksel	OSCCON
 	goto	bootloader_start	; to be continued further down in the file
 
@@ -219,10 +223,43 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 #ENDIF
 
 ; We have a valid application? Check if the entry pin is grounded
+; Enable weak pull-ups for Switches e.g. RA3 MCLR ;RA3 autoset weakpull up
+#IF USE_RA3_SWITCH
+	banksel	OPTION_REG
+	bcf	OPTION_REG,NOT_WPUEN 
+#ENDIF
 
-	banksel	ANSELC	  ;disable analog function on pin
+#if USE_RA5_SWITCH
+	banksel	OPTION_REG
+	bcf	OPTION_REG,NOT_WPUEN 
+    banksel WPUA	; Set pull ups on RA5 key inputs
+    bsf WPUA,5		; set pull-up status
+#endif
+
+	banksel ANSELC	  ;disable analog function on pin
 	clrf    ANSELC    ;clear ANSEL reg, all digital I/O
-;	bcf     ADCON0,ADON
+
+#IF USE_RA3_SWITCH
+	banksel	PORTA
+	btfss	PORTA,RA3
+	goto	_bootloader_main	; enter bootloader mode if input is low
+
+; We have a valid application and the entry pin is high. Start the application.
+	banksel	OPTION_REG
+	bsf	OPTION_REG,NOT_WPUEN	; but first, disable weak pullups
+#ENDIF
+
+#IF USE_RA5_SWITCH
+	banksel	PORTA
+	btfss	PORTA,RA5
+	goto	_bootloader_main	; enter bootloader mode if input is low
+
+; We have a valid application and the entry pin is high. Start the application.
+	banksel	OPTION_REG
+	bsf	OPTION_REG,NOT_WPUEN	; but first, disable weak pullups at all
+    banksel WPUA				; Set pull ups on RA5 key inputs
+    bcf WPUA,5					; Disable pull-up RA5
+#ENDIF
 
 #IF USE_RC0_SWITCH
 	banksel	PORTC
@@ -236,19 +273,10 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 	goto	_bootloader_main	; enter bootloader mode if input is low
 #ENDIF
 
-#IF USE_RA3_SWITCH
-	banksel	PORTA
-	btfss	PORTA,RA3
-	goto	_bootloader_main	; enter bootloader mode if input is low
-
-; We have a valid application and the entry pin is high. Start the application.
-	banksel	OPTION_REG
-	bsf	OPTION_REG,NOT_WPUEN	; but first, disable weak pullups
-#ENDIF
-
-
-	banksel	ANSELC			;enable analog function on RC
-	clrf    ANSELC  		;clear ANSEL reg, all digital I/O
+;;Enable Analolge if needed, or do it in main app
+;	banksel	ANSELC			;enable analog function on RC
+;	movlw   255
+;	movwf   ANSELC  		;SET ANSEL reg, all Analoge
 
 ;Start User Application
 	movlp	high APP_ENTRY_POINT	; attempt to appease certain user apps
