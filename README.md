@@ -51,7 +51,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 - Analoge Mode for PIN Cx is disabled, Must be enabled in your app if you need it. (For Switches and LED support)
 - The bootloader does support hot-plugging
     To reprogram the firmware on a self-powered device, the
-    User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C.
+    User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x0020.
 	
     XC8 2.x example:
 ```      
@@ -63,7 +63,7 @@ Once an in-system programmer has been used to program the bootloader onto a micr
 	for(k=0;k<125;k++) __delay_ms(10); //recommended (!) to wait min. 1 second 
 	#asm
 	  movlp 0x00
-	  goto 0x001C
+	  goto 0x0020
 	#endasm
 ```
 

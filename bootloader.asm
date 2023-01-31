@@ -81,9 +81,21 @@ LED_SUPPORT			equ 1
 ;Wait ~1,5 sec. before reset to let the USB disconnect
 RESETWAITLOOP		equ 1 ; INFO: need LED support !!
 
+#if USE_LVP && USE_RA3_SWITCH
+	error "Can not use RA3 with LVP"
+endif
+
 	radix dec
 	list n=0,st=off
+#IFDEF __16F1454
 	include "p16f1454.inc"
+#ENDIF
+#IFDEF __16F1455
+	include "p16f1455.inc"
+#ENDIF
+#IFDEF __16F1459
+	include "p16f1455.inc"
+#ENDIF
 	nolist
 	include "macros.inc"
 	include "bdt.inc"
@@ -218,8 +230,20 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 
 ; Check for valid application code: the lower 8 bits of the first word cannot be 0xFF
 #IF USE_CHECK_APP
-	call	app_is_present
+	call app_is_present
 	bz	_bootloader_main	; if we have no application, enter bootloader mode
+#ENDIF
+
+; Disable Analoge on ports
+	banksel ANSELC	  ;disable analog function on pin
+	clrf    ANSELC    ;clear ANSEL reg, all digital I/O
+
+#IFDEF __16F1455
+	clrf    ANSELA    ;clear ANSEL reg, all digital I/O
+#ENDIF
+
+#IFDEF __16F1459
+	clrf    ANSELA    ;clear ANSEL reg, all digital I/O
 #ENDIF
 
 ; We have a valid application? Check if the entry pin is grounded
@@ -235,9 +259,6 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
     banksel WPUA	; Set pull ups on RA5 key inputs
     bsf WPUA,5		; set pull-up status
 #endif
-
-	banksel ANSELC	  ;disable analog function on pin
-	clrf    ANSELC    ;clear ANSEL reg, all digital I/O
 
 #IF USE_RA3_SWITCH
 	banksel	PORTA
@@ -273,10 +294,7 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 	goto	_bootloader_main	; enter bootloader mode if input is low
 #ENDIF
 
-;;Enable Analolge if needed, or do it in main app
-;	banksel	ANSELC			;enable analog function on RC
-;	movlw   255
-;	movwf   ANSELC  		;SET ANSEL reg, all Analoge
+;;Enable Analolge in main app if you need it
 
 ;Start User Application
 	movlp	high APP_ENTRY_POINT	; attempt to appease certain user apps
@@ -285,8 +303,8 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 
 ; Not entering application code: initialize the USB interface and wait for commands.
 ; Defined a specific memory address to jump from the User application directly to Bootloader for interaction free update
-; User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x001C
-; Could be 0x0016 if you disbale all options 0x001C is safe for all options 
+; User Application have to disable Timer1 (if you use LED support), disable all interrupts drop the USB, wait, and goto 0x0020
+; Could be 0x0016 if you disbale all options 0x0020 is safe for all options 
 ;XC8 2.x example:
 ;-------------------------------------------
 ;T1CON  = 0;
@@ -297,10 +315,10 @@ _wosc	movlw	(1<<PLLRDY)|(1<<HFIOFR)|(1<<HFIOFS)
 ;for(k=0;k<125;k++) __delay_ms(10); //optional but recommended to wait ~ 1 second
 ; #asm
 ;    movlp 0x00
-;    goto 0x001C
+;    goto 0x0020
 ; #endasm
 ;-------------------------------------------
-	org 0x001C 
+	org 0x0020
 _bootloader_main
 ; Enable active clock tuning
 	movlw	(1<<ACTSRC)|(1<<ACTEN)
