@@ -94,7 +94,7 @@ endif
 	include "p16f1455.inc"
 #ENDIF
 #IFDEF __16F1459
-	include "p16f1455.inc"
+	include "p16f1459.inc"
 #ENDIF
 	nolist
 	include "macros.inc"
